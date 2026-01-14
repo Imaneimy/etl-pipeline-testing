@@ -1,9 +1,10 @@
 """
-Schema Validator — wip
+Schema Validator
+Checks that a DataFrame conforms to an expected schema (columns, types, nullability).
 """
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
 
@@ -26,31 +27,34 @@ class ValidationResult:
 
 
 def validate_schema(df: DataFrame, expected_schema: StructType) -> ValidationResult:
+    """Compare DataFrame schema against expected StructType."""
     result = ValidationResult()
-    # pas sûre que simpleString() soit stable entre versions Spark — à surveiller
+    # pas sûre que simpleString() soit stable entre les versions de Spark — à surveiller
+    # en 3.3 vs 3.4 certains types changent de représentation string
     actual_fields = {f.name: f.dataType.simpleString() for f in df.schema.fields}
     expected_fields = {f.name: f.dataType.simpleString() for f in expected_schema.fields}
 
-    # première passe : colonnes manquantes
-    for col_name in expected_fields:
+    for col_name, expected_type in expected_fields.items():
         if col_name not in actual_fields:
             result.fail(f"Missing column: '{col_name}'")
+        elif actual_fields[col_name] != expected_type:
+            result.fail(
+                f"Type mismatch on '{col_name}': expected {expected_type}, got {actual_fields[col_name]}"
+            )
 
-    # deuxième passe : types
-    for col_name, expected_type in expected_fields.items():
-        if col_name in actual_fields:
-            if actual_fields[col_name] != expected_type:
-                result.fail(f"Type mismatch on '{col_name}': expected {expected_type}, got {actual_fields[col_name]}")
-
+    # j'aurais pu faire ça dans la boucle du dessus mais comme ça c'est plus lisible
     extra = set(actual_fields) - set(expected_fields)
     if extra:
         result.fail(f"Unexpected columns: {extra}")
+
     return result
 
 
 def validate_not_null(df: DataFrame, columns: List[str]) -> ValidationResult:
+    """Assert that specified columns contain no NULL values."""
     result = ValidationResult()
     from pyspark.sql import functions as F
+
     for col_name in columns:
         null_count = df.filter(F.col(col_name).isNull()).count()
         if null_count > 0:
@@ -59,6 +63,7 @@ def validate_not_null(df: DataFrame, columns: List[str]) -> ValidationResult:
 
 
 def validate_row_count(df: DataFrame, min_rows: int = 1, max_rows: int = None) -> ValidationResult:
+    """Assert row count is within acceptable bounds."""
     result = ValidationResult()
     count = df.count()
     if count < min_rows:
@@ -69,6 +74,7 @@ def validate_row_count(df: DataFrame, min_rows: int = 1, max_rows: int = None) -
 
 
 def validate_uniqueness(df: DataFrame, subset: List[str]) -> ValidationResult:
+    """Assert no duplicate rows exist on a given key set."""
     result = ValidationResult()
     total = df.count()
     distinct = df.dropDuplicates(subset).count()

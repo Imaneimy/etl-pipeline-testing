@@ -1,10 +1,11 @@
 """
 ETL Module — Transform
+transformations appliquées aux DataFrames bruts avant chargement.
 """
 
+import logging
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
-import logging
 from pyspark.sql.types import DoubleType, TimestampType
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,10 @@ def normalize_column_names(df: DataFrame) -> DataFrame:
 
 
 def cast_types(df: DataFrame, type_map: dict) -> DataFrame:
+    """
+    Cast columns to specified types.
+    type_map = {"col_name": "double", "other_col": "timestamp"}
+    """
     # TODO: refactorer ça plus tard — trop verbeux pour ce que ça fait
     for col_name, col_type in type_map.items():
         if col_name in df.columns:
@@ -35,7 +40,11 @@ def drop_duplicates(df: DataFrame, subset: list = None) -> DataFrame:
 
 def handle_nulls(df: DataFrame, strategy: dict) -> DataFrame:
     """
-    NOTE: strategy="mean" plante si la colonne est de type string — à corriger
+    Fill or drop nulls per column.
+    strategy = {"col": "drop"} or {"col": 0} or {"col": "mean"}
+
+    NOTE: strategy="mean" plante si la colonne est de type string — limitation connue,
+    à corriger plus tard (voir draft/notes.md)
     """
     for col_name, action in strategy.items():
         if col_name not in df.columns:
@@ -43,6 +52,7 @@ def handle_nulls(df: DataFrame, strategy: dict) -> DataFrame:
         if action == "drop":
             df = df.filter(F.col(col_name).isNotNull())
         elif action == "mean":
+            # pas sûre que ce soit la meilleure approche mais ça marche pour les numériques
             mean_val = df.select(F.mean(col_name)).first()[0]
             df_temp = df.fillna({col_name: mean_val})
             df = df_temp
@@ -59,7 +69,10 @@ def add_ingestion_metadata(df: DataFrame, source: str) -> DataFrame:
 
 
 def aggregate_sales(df: DataFrame) -> DataFrame:
-    """agrégation journalière par produit et région"""
+    """
+    agrégation journalière par produit et région.
+    colonnes attendues : date, product_id, region, amount
+    """
     return (
         df.groupBy("date", "product_id", "region")
           .agg(
