@@ -16,7 +16,7 @@ docs/             — cas de test format XRAY
 draft/            — mes notes perso de dev (brouillon)
 ```
 
-## Lancer les tests
+## Lancer les tests 🛠️
 
 ```bash
 pip install -r requirements.txt
@@ -53,3 +53,4 @@ Dans `validate_schema`, j'utilise `simpleString()` pour comparer les types. En S
 ## Stack
 
 PySpark 3.4, Pytest, Python
+
