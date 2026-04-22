@@ -78,7 +78,12 @@ def test_validate_not_null_pass(spark):
 # TC-VAL-005 | Not-null check fails when NULL exists
 # ---------------------------------------------------------------------------
 def test_validate_not_null_fail(spark):
-    df = spark.createDataFrame([(None, 100.0)], ["product_id", "amount"])
+    from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+    schema = StructType([
+        StructField("product_id", StringType()),
+        StructField("amount", DoubleType()),
+    ])
+    df = spark.createDataFrame([(None, 100.0)], schema)
     result = validate_not_null(df, ["product_id"])
     assert not result.passed
 
