@@ -1,8 +1,4 @@
-# etl-pipeline-testing
 
-Ce projet vient d'un problème concret que j'avais en stage chez Orange Maroc — les données achats arrivaient de SAP en CSV, et on savait jamais vraiment si le format allait être propre. On vérifiait à la main dans Excel avant de les charger dans Power BI. J'ai voulu formaliser ça avec un vrai pipeline de tests automatisés.
-
-Le pipeline est en PySpark avec des tests Pytest. Les cas de test suivent le format XRAY/JIRA qu'on utilisait en équipe pour tracker les anomalies.
 
 ## Structure
 
